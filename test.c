@@ -4,17 +4,21 @@
 int sgn(int y) { return y > 0 ? 1 : y >> 31; }
 
 void test(int (*mmemcmp)(const void*, const void*, size_t)) {
-	char a[] = "cefhQ";
-	char q[] = "cefhR";
-	char b[] = "befi";
-	char c[] = "defg";
-	assert(sgn(memcmp(a, a, 4)) == sgn(mmemcmp(a, a, 4)));
-	assert(sgn(memcmp(a, q, 4)) == sgn(mmemcmp(a, q, 4)));
-	assert(sgn(memcmp(q, a, 4)) == sgn(mmemcmp(q, a, 4)));
-	assert(sgn(memcmp(a, c, 4)) == sgn(mmemcmp(a, c, 4)));
-	assert(sgn(memcmp(a, b, 4)) == sgn(mmemcmp(a, b, 4)));
-	assert(sgn(memcmp(c, a, 4)) == sgn(mmemcmp(c, a, 4)));
-	assert(sgn(memcmp(b, a, 4)) == sgn(mmemcmp(b, a, 4)));
+	char as[][5] = {
+		"cefhQ",
+		"cefhR",
+		"befi",
+		"defg" };
+	for (int i = 1; i < sizeof(as)/sizeof(as[0]); i++) {
+		for (int j = 0; j <= i; j++) {
+			assert(sgn(memcmp(as[i], as[j], 4)) == sgn(mmemcmp(as[i], as[j], 4)));
+			assert(sgn(memcmp(as[i], as[j], 3)) == sgn(mmemcmp(as[i], as[j], 3)));
+			assert(sgn(memcmp(as[j], as[i], 4)) == sgn(mmemcmp(as[j], as[i], 4)));
+			assert(sgn(memcmp(as[j], as[i], 3)) == sgn(mmemcmp(as[j], as[i], 3)));
+			assert(sgn(memcmp(as[i], as[i], 4)) == sgn(mmemcmp(as[i], as[i], 4)));
+			assert(sgn(memcmp(as[j], as[j], 3)) == sgn(mmemcmp(as[j], as[j], 3)));
+		}
+	}
 }
 
 typedef int MEMCMP(const void*, const void*, size_t);

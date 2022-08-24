@@ -60,6 +60,16 @@ ja	.Labove8
 test	edx, edx #need this because of braindead x86 shifts
 jz	.Lunsafe_ret
 
+#ifdef MEMCMP_INTEL
+shl	edx, 3
+bzhi	rax, [rdi], rdx
+bzhi	rsi, [rsi], rdx
+
+xor	edx, edx
+
+bswap	rax
+bswap	rsi
+#else
 MOVBE	rax, [rdi]
 MOVBE	rsi, [rsi]
 BSWAP	(rax)
@@ -72,6 +82,7 @@ xor	edx, edx
 
 SHR	(rax)
 SHR	(rsi)
+#endif
 sub	rax,rsi
 seta	dl
 sar	rax, 63
@@ -108,17 +119,15 @@ lea	r9, [rdi + 7]
 xor	r9, r8
 test	r9, PAGESZ  #shr+jc would use a shorter immediate, but not fuse
 jnz	.Lfixrdi
-movbe	rax, [rdi] #just use regular movbe here
+mov	rax, [rdi] #just use regular movbe here
 
-# ecx shifts off the dummy bits.  Do this after the load, so as to get it
-# started asap.  uica says this has less throughput, but we could be on the
-# critical path, and this hides latency better
-# (I feel like there should be a way to do this with fewer ops that involves a
-# negative ecx--taking advantage of the masking--but idk)
-lea	rcx, [rdx*8-64]
-neg	ecx
+# rcx shifts off the dummy bits.  Do this after the load, to get the latter
+# started asap.
+mov	ecx, edx
+shl	ecx, 3
 
-SHR	(rax)
+bzhi	rax, rax, rcx
+bswap	rax
 
 .Lpostrdi:
 lea	r8, [rsi + rdx]
@@ -127,8 +136,8 @@ xor	r9, r8
 test	r9, PAGESZ
 jnz	.Lfixrsi
 
-movbe	rsi, [rsi] #ditto
-SHR	(rsi)
+bzhi	rsi, [rsi], rcx
+bswap	rsi
 
 .Lpostrsi:
 xor	edx, edx
@@ -142,16 +151,14 @@ ret
 .section .text.cold,"ax" #good idea or no?
 .Lfixrdi:
 movbe	rdi, [rdi + rdx - 8]
-lea	rcx, [rdx*8-64]
-neg	ecx
-SHL	(rdi)
-SHR	(rdi)
+mov	ecx, edx
+shl	ecx, 3
+bzhi	rdi, rdi, rcx
 jmp	.Lpostrdi
 
 .Lfixrsi:
 movbe	rsi, [rdi + rdx - 8]
-SHL	(rsi)
-SHR	(rsi)
+bzhi	rsi, rsi, rcx
 jmp	.Lpostrsi
 
 .section .text
