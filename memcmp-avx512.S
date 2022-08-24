@@ -88,7 +88,6 @@ sub		eax, ecx
 VZEROUPPER
 ret
 
-.p2align 4
 .Labove64: #could make this the loop body, but overwhelmingly likely that the first 64 bytes are different even if the string is >64 bytes, so spare no cycles here
 vmovdqu8	zmm0, [rdi]
 vmovdqu8	zmm1, [rsi]
@@ -98,6 +97,7 @@ jnz		.Lcmp64
 
 mov		rcx, 128 #64 bytes _above_ current index; check if it passed rdx
 jmp		.Leloop
+.p2align 4
 .Lloop:
 vmovdqu8	zmm0, [rdi + rcx - 64]
 vmovdqu8	zmm1, [rsi + rcx - 64]
