@@ -28,10 +28,6 @@
 #define MEMCMP fancy_memcmp_avx512
 #endif
 
-#ifndef VZEROUPPER
-#define VZEROUPPER vzeroupper
-#endif
-
 .globl MEMCMP
 .type MEMCMP, @function
 
@@ -50,17 +46,16 @@ ja	.Labove64
 mov		rcx, -1
 bzhi		rcx, rcx, rdx
 kmovq		k3, rcx
-vmovdqu8	zmm0, [rdi]
-vmovdqu8	zmm1, [rsi]
-vpcmpnleub	k1{k3}, zmm0, zmm1 #could also be nlt; or le/lt and commute
-vpcmpnleub	k2{k3}, zmm1, zmm0
+vmovdqu8	zmm16, [rdi]
+vmovdqu8	zmm17, [rsi]
+vpcmpnleub	k1{k3}, zmm16, zmm17 #could also be nlt; or le/lt and commute
+vpcmpnleub	k2{k3}, zmm17, zmm16
 kmovq		rcx, k1
 kmovq		rax, k2
 tzcnt		rcx, rcx
 tzcnt		rax, rax
 sub		eax, ecx
 
-VZEROUPPER
 ret
 #endif
 
@@ -74,41 +69,41 @@ ja	.Labove64
 mov		rcx, -1
 bzhi		rcx, rcx, rdx
 kmovq		k1, rcx
-vmovdqu8	zmm0{k1}, [rdi]
-vmovdqu8	zmm1{k1}, [rsi]
+vmovdqu8	zmm16{k1}, [rdi]
+vmovdqu8	zmm17{k1}, [rsi]
 .Lcmp64:
-vpcmpnleub	k1, zmm0, zmm1 #could also be nlt; or le/lt and commute
-vpcmpnleub	k2, zmm1, zmm0
+vpcmpnleub	k1, zmm16, zmm17 #could also be nlt; or le/lt and commute
+vpcmpnleub	k2, zmm17, zmm16
 kmovq		rcx, k1
 kmovq		rax, k2
 tzcnt		rcx, rcx
 tzcnt		rax, rax
 sub		eax, ecx
 
-VZEROUPPER
 ret
 
 .Labove64: #could make this the loop body, but overwhelmingly likely that the first 64 bytes are different even if the string is >64 bytes, so spare no cycles here
-vmovdqu8	zmm0, [rdi]
-vmovdqu8	zmm1, [rsi]
-vpcmpequb	k3, zmm0, zmm1
+vmovdqu8	zmm16, [rdi]
+vmovdqu8	zmm17, [rsi]
+vpcmpequb	k3, zmm16, zmm17
 ktestq		k3, k3
 jnz		.Lcmp64
 
 mov		rcx, 128 #64 bytes _above_ current index; check if it passed rdx
-jmp		.Leloop
+cmp		rcx, rdx
+jae		.Ltail
 .p2align 4
 .Lloop:
-vmovdqu8	zmm0, [rdi + rcx - 64]
-vmovdqu8	zmm1, [rsi + rcx - 64]
-vpcmpnequb	k3, zmm0, zmm1
+vmovdqu8	zmm16, [rdi + rcx - 64]
+vmovdqu8	zmm17, [rsi + rcx - 64]
+vpcmpnequb	k3, zmm16, zmm17
 ktestq		k3, k3
 jnz		.Lcmp64
 add		rcx, 64
-.Leloop:
 cmp		rcx, rdx
 jb		.Lloop
 
-vmovdqu8	zmm0, [rdi + rdx - 64]
-vmovdqu8	zmm1, [rsi + rdx - 64]
+.Ltail:
+vmovdqu8	zmm16, [rdi + rdx - 64]
+vmovdqu8	zmm17, [rsi + rdx - 64]
 jmp		.Lcmp64
