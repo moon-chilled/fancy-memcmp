@@ -20,7 +20,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# memcmp with avx2, bmi, movbe, etc.
+# memcmp with avx2, bmi2, movbe (only on amd)
 
 .intel_syntax noprefix
 
@@ -53,7 +53,7 @@
 .globl MEMCMPU
 .type MEMCMPU, @function
 
-.p2align 4
+.p2align 4,0xcc
 MEMCMPU:
 cmp	rdx, 8
 ja	.Labove8

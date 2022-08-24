@@ -35,7 +35,7 @@
 .globl MEMCMPU
 .type MEMCMPU, @function
 
-.p2align 4
+.p2align 4,0xcc
 MEMCMPU:
 cmp	rdx, 8
 ja	.Labove8
