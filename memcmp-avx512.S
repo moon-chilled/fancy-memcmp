@@ -25,18 +25,22 @@
 #ifndef MEMCMP
 #define MEMCMP fancy_memcmp_avx512
 #endif
-#ifndef MEMCMPU
-#define MEMCMPU fancy_memcmp_unsafe_avx512
+
+#ifndef VZEROUPPER
+#define VZEROUPPER vzeroupper
 #endif
 
-.globl MEMCMP, MEMCMPU
+.globl MEMCMP
 .type MEMCMP, @function
+
+#ifdef MEMCMPU
+.globl MEMCMPU
 .type MEMCMPU, @function
 
 # rdi, rsi: strings
 # rdx: count
 # note: MEMCMPU must come before MEMCMP, to ensure the conditional jump is a forward one
-.p2align 4
+.p2align 4, 0xcc
 MEMCMPU:
 cmp	rdx, 64
 ja	.Labove64
@@ -54,12 +58,13 @@ tzcnt		rcx, rcx
 tzcnt		rax, rax
 sub		eax, ecx
 
-#vzeroupper
+VZEROUPPER
 ret
+#endif
 
 # rdi, rsi: strings
 # rdx: count
-.p2align 4
+.p2align 4,0xcc
 MEMCMP:
 cmp	rdx, 64
 ja	.Labove64
@@ -78,7 +83,7 @@ tzcnt		rcx, rcx
 tzcnt		rax, rax
 sub		eax, ecx
 
-#vzeroupper
+VZEROUPPER
 ret
 
 .Labove64: #could make this the loop body, but overwhelmingly likely that the first 64 bytes are different even if the string is >64 bytes, so spare no cycles here

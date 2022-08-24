@@ -32,3 +32,6 @@
 .globl MEMCMP, MEMCMPU
 .type MEMCMP, @function
 .type MEMCMPU, @function
+.extern memcmp
+MEMCMP: jmp memcmp
+MEMCMPU: jmp memcmp
