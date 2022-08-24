@@ -32,6 +32,7 @@
 .type MEMCMP, @function
 
 #ifdef MEMCMPU
+.globl MEMCMPU
 .type MEMCMPU, @function
 
 .p2align 4
@@ -53,7 +54,7 @@ neg	rcx
 
 xor	edx, edx
 
-shr	r8, cl
+shl	r8, cl
 and	rax, r8
 and	rsi, r8
 sub	rax,rsi
