@@ -69,8 +69,8 @@ ja	.Labove64
 mov		rcx, -1
 bzhi		rcx, rcx, rdx
 kmovq		k1, rcx
-vmovdqu8	zmm16{k1}, [rdi]
-vmovdqu8	zmm17{k1}, [rsi]
+vmovdqu8	zmm16{k1}{z}, [rdi]
+vmovdqu8	zmm17{k1}{z}, [rsi]
 .Lcmp64:
 vpcmpnleub	k1, zmm16, zmm17 #could also be nlt; or le/lt and commute
 vpcmpnleub	k2, zmm17, zmm16
