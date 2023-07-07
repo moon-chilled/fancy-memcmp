@@ -31,34 +31,6 @@
 .globl MEMCMP
 .type MEMCMP, @function
 
-#ifdef MEMCMPU
-.globl MEMCMPU
-.type MEMCMPU, @function
-
-# rdi, rsi: strings
-# rdx: count
-# note: MEMCMPU must come before MEMCMP, to ensure the conditional jump is a forward one
-.p2align 4, 0xcc
-MEMCMPU:
-cmp	rdx, 64
-ja	.Labove64
-
-mov		rcx, -1
-bzhi		rcx, rcx, rdx
-kmovq		k3, rcx
-vmovdqu8	zmm16, [rdi]
-vmovdqu8	zmm17, [rsi]
-vpcmpnleub	k1{k3}, zmm16, zmm17 #could also be nlt; or le/lt and commute
-vpcmpnleub	k2{k3}, zmm17, zmm16
-kmovq		rcx, k1
-kmovq		rax, k2
-tzcnt		rcx, rcx
-tzcnt		rax, rax
-sub		eax, ecx
-
-ret
-#endif
-
 # rdi, rsi: strings
 # rdx: count
 .p2align 4,0xcc

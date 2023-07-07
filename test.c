@@ -22,15 +22,11 @@ void test(int (*mmemcmp)(const void*, const void*, size_t)) {
 }
 
 typedef int MEMCMP(const void*, const void*, size_t);
-MEMCMP fancy_memcmp_avx512, fancy_memcmp_unsafe_avx512, fancy_memcmp_avx2_intel, fancy_memcmp_unsafe_avx2_intel, fancy_memcmp_avx2_amd, fancy_memcmp_unsafe_avx2_amd, fancy_memcmp_sse2, fancy_memcmp_unsafe_sse2;
+MEMCMP fancy_memcmp_avx512, fancy_memcmp_avx2_intel, fancy_memcmp_avx2_amd, fancy_memcmp_sse2;
 
 int main() {
 	test(fancy_memcmp_avx512);
-	test(fancy_memcmp_unsafe_avx512);
 	test(fancy_memcmp_avx2_intel);
-	test(fancy_memcmp_unsafe_avx2_intel);
 	test(fancy_memcmp_avx2_amd);
-	test(fancy_memcmp_unsafe_avx2_amd);
 	test(fancy_memcmp_sse2);
-	test(fancy_memcmp_unsafe_sse2);
 }

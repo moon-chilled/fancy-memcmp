@@ -1,26 +1,26 @@
-# Copyright (c) 2022, Elijah Stone
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-# * Redistributions of source code must retain the above copyright notice, this
-#   list of conditions and the following disclaimer.
-# * Redistributions in binary form must reproduce the above copyright notice,
-#   this list of conditions and the following disclaimer in the documentation
-#   and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# 'portable' memcmp; uses sse2, so should work on all/any amd64
+// Copyright (c) 2022, Elijah Stone
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// 'portable' memcmp; uses sse2, so should work on all/any amd64
 
 .intel_syntax noprefix
 
@@ -31,82 +31,43 @@
 .globl MEMCMP
 .type MEMCMP, @function
 
-#ifdef MEMCMPU
-.globl MEMCMPU
-.type MEMCMPU, @function
-
-.p2align 4,0xcc
-MEMCMPU:
-cmp	rdx, 8
-ja	.Labove8
-test	edx, edx #need this because of braindead x86 shifts
-jz	.Lunsafe_ret
-
-mov	rax, [rdi]
-mov	rsi, [rsi]
-bswap	rax
-bswap	rsi
-
-mov	r8, -1
-
-lea	rcx, [8*rdx - 64]
-neg	rcx
-
-xor	edx, edx
-
-shl	r8, cl
-and	rax, r8
-and	rsi, r8
-sub	rax,rsi
-seta	dl
-sar	rax, 63
-or	eax, edx
-.Lunsafe_ret:
-ret
-#endif
-
 #define LGPAGESZ 12
 #define PAGESZ (1<<LGPAGESZ)
 
-# Branchless strategy for <8-byte compares:
-# We were asked to read rdx bytes from x (for values of x in {rdi rsi}), but we
-# actually want to read 8 bytes starting from x and shift off the extraneous ones.
-# Is that a problem?  If x is near the end of a page, and x+rdx is also near
-# the end of that page, but x+7 is in the next page, then we read from the next
-# page when we shouldn't.  But if x+rdx crosses a page, then we don't care.  So
-# what we have to check is whether x+rdx and x+7 are in different pages, which
-# is equivalent to checking if they differ in the LGPAGESZth bit.
-# If they do so differ, then we can instead read 8 bytes from x+rdx-8, and shift
-# the other way around.
+// Branchless strategy for <8-byte compares:
+// We were asked to read rdx bytes from x (for values of x in {rdi rsi}), but we
+// actually want to read 8 bytes starting from x and shift off the extraneous ones.
+// Is that a problem?  If x is near the end of a page, and x+rdx is also near
+// the end of that page, but x+7 is in the next page, then we read from the next
+// page when we shouldn't.  But if x+rdx crosses a page, then we don't care.  So
+// what we have to check is whether x+rdx and x+7 are in different pages, which
+// is equivalent to checking if they differ in the LGPAGESZth bit.
+// If they do so differ, then we can instead read 8 bytes from x+rdx-8, and shift
+// the other way around.
 
-# rdi, rsi: strings
-# rdx: length
+// rdi, rsi: strings
+// rdx: length
 .p2align 4,0xcc
 MEMCMP:
 cmp	rdx, 8
 jae	.Labove8
-test	edx, edx #need this because of braindead x86 shifts
+test	edx, edx
 jz	.Lret
 
 lea	r8, [rdi + rdx]
 lea	r9, [rdi + 7]
 xor	r9, r8
-test	r9, PAGESZ  #shr+jc would use a shorter immediate, but not fuse
+test	r9, PAGESZ	// shr+jc would use a shorter immediate, but not fuse
 jnz	.Lfixrdi
 mov	rax, [rdi]
 bswap	rax
 
-# ecx shifts off the dummy bits.  Do this after the load, so as to get it
-# started asap.  uica says this has less throughput, but we could be on the
-# critical path, and this hides latency better
-# (I feel like there should be a way to do this with fewer ops that involves a
-# negative ecx--taking advantage of the masking--but idk)
+// shift off the dummy bits
 lea	rcx, [rdx*8-64]
 neg	ecx
 
-shr	rax, cl  #no shlx yet :\
-
 .Lpostrdi:
+shr	rax, cl
 lea	r8, [rsi + rdx]
 lea	r9, [rsi + 7]
 xor	r9, r8
@@ -115,9 +76,9 @@ jnz	.Lfixrsi
 
 mov	rsi, [rsi]
 bswap	rsi
-shr	rsi, cl
 
 .Lpostrsi:
+shr	rsi, cl
 xor	edx, edx
 sub	rax, rsi
 seta	dl
@@ -126,30 +87,26 @@ or	eax, edx
 .Lret:
 ret
 
-.section .text.cold,"ax" #good idea or no?
+.section .text.cold,"ax"	// good idea or no?
 .Lfixrdi:
 mov	rdi, [rdi + rdx - 8]
 bswap	rdi
-#mov	ecx, 64
-#shl	edx, 3    #2^3 = 8 bits
-#sub	ecx, edx
 lea	rcx, [rdx*8-64]
 neg	ecx
 shl	rdi, cl
-shr	rdi, cl
 jmp	.Lpostrdi
 
 .Lfixrsi:
 mov	rsi, [rdi + rdx - 8]
 bswap	rsi
 shl	rsi, cl
-shr	rsi, cl
 jmp	.Lpostrsi
 
 .section .text
 .Labove8:
 cmp	rdx, 16
 ja	.Labove16
+.Lbelow16:
 mov	r8, [rdi + rdx - 8]
 mov	r9, [rsi + rdx - 8]
 mov	rax, [rdi]
@@ -167,3 +124,41 @@ or	eax, edx
 ret
 
 .Labove16:
+// straightaway check the first 16 bytes; if they differ (likely), set length to 16 and reuse plain <=16 code
+movdqu	xmm0, [rdi]
+movdqu	xmm1, [rsi]
+pxor	xmm0, xmm1
+mov	eax, 16
+ptest	xmm0, xmm0
+cmovnz	rdx, rax	// must be 64-bit cmov, since on fail, we have to keep the high 32 bits of the length
+jnz	.Lbelow16
+
+// no dice. Align s1, and hope s2 ends up aligned too
+lea	rcx, [rdi + 16]
+and	rcx, -16		// compute aligned s1
+sub	rdi, rcx		// compute -delta
+sub	rsi, rdi		// advance s2
+lea	rdx, [rdx + rdi	- 16]	// reduce length by the amount that we advanced s1
+				// also, bias it by -16, so when there are <=2 words left, an index will be >= it
+xor	edi, edi		// initialise index
+.Lloop:
+movdqu	xmm0, [rsi + rdi]
+pxor	xmm0, [rcx + rdi]
+ptest	xmm0, xmm0
+jnz	.Lmismatch
+add	rdi, 16
+cmp	rdi, rdx
+jb	.Lloop
+
+// last 16 bytes; again, set up registers for the <=16 code and jump to it
+// length was previously biased by -16, so all we have to do is add it to get a pointer 16 bytes before the end
+lea	rdi, [rcx + rdx]
+add	rsi, rdx
+mov	edx, 16
+jmp	.Lbelow16
+
+.Lmismatch:
+add	rsi, rdi	// s2 := s2 + i
+add	rdi, rcx	// s1 (nee i) := i + s1
+mov	edx, 16
+jmp	.Lbelow16

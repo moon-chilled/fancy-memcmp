@@ -55,39 +55,29 @@
 
 .p2align 4,0xcc
 MEMCMPU:
-cmp	rdx, 8
-ja	.Labove8
-test	edx, edx #need this because of braindead x86 shifts
-jz	.Lunsafe_ret
+cmp	rdx, 32
+ja	.Labove32
 
-#ifdef MEMCMP_INTEL
-shl	edx, 3
-bzhi	rax, [rdi], rdx
-bzhi	rsi, [rsi], rdx
+vmovdqu		ymm0, [rdi]
+vmovdqu		ymm1, [rsi]
 
-xor	edx, edx
+shl		edx, 3
 
-bswap	rax
-bswap	rsi
-#else
-MOVBE	rax, [rdi]
-MOVBE	rsi, [rsi]
-BSWAP	(rax)
-BSWAP	(rsi)
+# ymm0 = min(ymm0,ymm1) where ymm0 <= ymm1 (in an unsigned way!)
+vpminub		ymm2, ymm0, ymm1
+vpcmpeqb	ymm0, ymm0, ymm2
+vpcmpeqb	ymm1, ymm1, ymm2
+vpmovmskb	eax, ymm0
+vpmovmskb	ecx, ymm1
+not		eax
+not		ecx
+bzhi		eax, eax, edx
+bzhi		ecx, ecx, edx
+tzcnt		eax, eax
+tzcnt		ecx, ecx
+sub		eax, ecx
 
-lea	rcx, [8*rdx - 64]
-neg	rcx
-
-xor	edx, edx
-
-SHR	(rax)
-SHR	(rsi)
-#endif
-sub	rax,rsi
-seta	dl
-sar	rax, 63
-or	eax, edx
-.Lunsafe_ret:
+VZEROUPPER
 ret
 #endif
 
@@ -111,7 +101,7 @@ ret
 MEMCMP:
 cmp	rdx, 8
 jae	.Labove8
-test	edx, edx #need this because of braindead x86 shifts
+test	edx, edx
 jz	.Lret
 
 lea	r8, [rdi + rdx]
@@ -119,13 +109,10 @@ lea	r9, [rdi + 7]
 xor	r9, r8
 test	r9, PAGESZ  #shr+jc would use a shorter immediate, but not fuse
 jnz	.Lfixrdi
-mov	rax, [rdi] #just use regular movbe here
+mov	rax, [rdi] #just use regular mov here
 
-# rcx shifts off the dummy bits.  Do this after the load, to get the latter
-# started asap.
-mov	ecx, edx
-shl	ecx, 3
-
+# shifts off the dummy bits
+lea	ecx, [edx * 8]
 bzhi	rax, rax, rcx
 bswap	rax
 
