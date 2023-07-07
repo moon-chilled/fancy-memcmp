@@ -140,6 +140,9 @@ sub	rdi, rcx		// compute -delta
 sub	rsi, rdi		// advance s2
 lea	rdx, [rdx + rdi	- 16]	// reduce length by the amount that we advanced s1
 				// also, bias it by -16, so when there are <=2 words left, an index will be >= it
+cmp	rdx, 16
+jb	.Lshort			// not enough left for even one iteration of the loop?
+
 xor	edi, edi		// initialise index
 .Lloop:
 movdqu	xmm0, [rsi + rdi]
@@ -150,6 +153,7 @@ add	rdi, 16
 cmp	rdi, rdx
 jb	.Lloop
 
+.Lshort:
 // last 16 bytes; again, set up registers for the <=16 code and jump to it
 // length was previously biased by -16, so all we have to do is add it to get a pointer 16 bytes before the end
 lea	rdi, [rcx + rdx]
