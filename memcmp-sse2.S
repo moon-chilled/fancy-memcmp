@@ -63,8 +63,8 @@ mov	rax, [rdi]
 bswap	rax
 
 // shift off the dummy bits
-lea	rcx, [rdx*8-64]
-neg	ecx
+lea	ecx, [rdx*8]
+neg	ecx		// ecx := 64 - 8*edx; but we can skip adding 64, since we use it as a shift
 
 .Lpostrdi:
 shr	rax, cl
@@ -91,7 +91,7 @@ ret
 .Lfixrdi:
 mov	rdi, [rdi + rdx - 8]
 bswap	rdi
-lea	rcx, [rdx*8-64]
+lea	ecx, [rdx*8]
 neg	ecx
 shl	rdi, cl
 jmp	.Lpostrdi
@@ -127,11 +127,12 @@ ret
 // straightaway check the first 16 bytes; if they differ (likely), set length to 16 and reuse plain <=16 code
 movdqu	xmm0, [rdi]
 movdqu	xmm1, [rsi]
-pxor	xmm0, xmm1
 mov	eax, 16
-ptest	xmm0, xmm0
-cmovnz	rdx, rax	// must be 64-bit cmov, since on fail, we have to keep the high 32 bits of the length
-jnz	.Lbelow16
+pcmpeqb	xmm0, xmm1
+pmovmskb ecx, xmm0
+cmp	ecx, (1<<16)-1
+cmovne	rdx, rax	// must be 64-bit cmov, since on fail, we have to keep the high 32 bits of the length
+jne	.Lbelow16
 
 // no dice. Align s1, and hope s2 ends up aligned too
 lea	rcx, [rdi + 16]
@@ -146,9 +147,10 @@ jb	.Lshort			// not enough left for even one iteration of the loop?
 xor	edi, edi		// initialise index
 .Lloop:
 movdqu	xmm0, [rsi + rdi]
-pxor	xmm0, [rcx + rdi]
-ptest	xmm0, xmm0
-jnz	.Lmismatch
+pcmpeqb	xmm0, [rcx + rdi]
+pmovmskb eax, xmm0
+cmp	eax, (1<<16)-1
+jne	.Lmismatch
 add	rdi, 16
 cmp	rdi, rdx
 jb	.Lloop
@@ -162,7 +164,9 @@ mov	edx, 16
 jmp	.Lbelow16
 
 .Lmismatch:
-add	rsi, rdi	// s2 := s2 + i
-add	rdi, rcx	// s1 (nee i) := i + s1
-mov	edx, 16
-jmp	.Lbelow16
+tzcnt	eax, eax	// decodes as bsf on non-bmi; same behaviour for nonzero input (which we have ensured), but faster for some bmi cpus
+add	rdi, rax
+movzx	eax, byte ptr [rsi + rdi]
+movzx	ecx, byte ptr [rcx + rdi]
+sub	eax, ecx
+ret
