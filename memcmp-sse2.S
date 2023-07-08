@@ -141,8 +141,10 @@ sub	rdi, rcx		// compute -delta
 sub	rsi, rdi		// advance s2
 lea	rdx, [rdx + rdi	- 16]	// reduce length by the amount that we advanced s1
 				// also, bias it by -16, so when there are <=2 words left, an index will be >= it
-cmp	rdx, 16
-jb	.Lshort			// not enough left for even one iteration of the loop?
+test	rdx, rdx
+jle	.Lshort			// not enough left for even one iteration of the loop?
+				// (This tests rdx<=0, which could also be true if the original input was >2^63.
+				//  But that's going to be UB anyway, since you can't have an allocation that large, so...)
 
 xor	edi, edi		// initialise index
 .Lloop:
