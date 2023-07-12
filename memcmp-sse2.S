@@ -52,7 +52,7 @@ MEMCMP:
 cmp	rdx, 8
 jae	.Labove8
 test	edx, edx
-jz	.Lret
+jz	.Lnought
 
 lea	r8, [rdi + rdx]
 lea	r9, [rdi + 7]
@@ -84,7 +84,10 @@ sub	rax, rsi
 seta	dl
 sar	rax, 63
 or	eax, edx
-.Lret:
+ret
+
+.Lnought:
+xor	eax, eax
 ret
 
 .section .text.cold,"ax"	// good idea or no?
