@@ -57,7 +57,7 @@ ret
 .Labove64: #could make this the loop body, but overwhelmingly likely that the first 64 bytes are different even if the string is >64 bytes, so spare no cycles here
 vmovdqu8	zmm16, [rdi]
 vmovdqu8	zmm17, [rsi]
-vpcmpequb	k3, zmm16, zmm17
+vpcmpnequb	k3, zmm16, zmm17
 ktestq		k3, k3
 jnz		.Lcmp64
 
